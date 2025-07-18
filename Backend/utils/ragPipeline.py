@@ -27,14 +27,22 @@ def call_groq_llama(prompt):
         "Content-Type": "application/json"
     }
     body = {
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "model": "llama3-8b-8192",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
 
-    response = requests.post(url, headers=headers, json=body)
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+    try:
+        response = requests.post(url, headers=headers, json=body)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except requests.exceptions.HTTPError as e:
+        print(f"🔥 Groq API HTTP Error: {e}")
+        print(f"🔥 Response content: {response.text}")
+        raise e
+    except Exception as e:
+        print(f"🔥 Groq API Error: {e}")
+        raise e
 
 
 def store_embeddings(file_paths):
@@ -78,7 +86,6 @@ def store_embeddings(file_paths):
 
     try:
         db.add_documents(chunks)
-        db.persist()
         print(f"✅ Successfully stored {len(chunks)} chunks to ChromaDB")
         return True
     except Exception as e:
@@ -112,21 +119,7 @@ def query_with_rag(query):
 
 
 
-# def call_groq_llama(prompt):
-#     url = "https://api.groq.com/openai/v1/chat/completions"
-#     headers = {
-#         "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
-#         "Content-Type": "application/json"
-#     }
-#     body = {
-#         "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-#         "messages": [{"role": "user", "content": prompt}],
-#         "temperature": 0.7
-#     }
 
-#     response = requests.post(url, headers=headers, json=body)
-#     response.raise_for_status()
-#     return response.json()["choices"][0]["message"]["content"]
 
 
 def check_if_chromadb_empty():
