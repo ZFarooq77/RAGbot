@@ -1,0 +1,12 @@
+flask
+flask-cors
+python-dotenv
+PyPDF2
+python-docx
+python-pptx
+langchain
+chromadb
+transformers
+sentence-transformers
+requests
+
