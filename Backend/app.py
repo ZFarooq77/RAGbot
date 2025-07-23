@@ -27,6 +27,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Global dictionary to track uploaded files per session
 session_files = {}
+# Track session last activity
+session_last_activity = {}
 
 def get_session_folder(session_id):
     """Get or create session-specific folder"""
@@ -70,6 +72,25 @@ def cleanup_all_session_files():
     except Exception as e:
         print(f"❌ Error cleaning up all session files: {str(e)}")
 
+def update_session_activity(session_id):
+    """Update the last activity time for a session"""
+    session_last_activity[session_id] = time.time()
+
+def cleanup_inactive_sessions():
+    """Clean up sessions that have been inactive for more than 1 hour"""
+    current_time = time.time()
+    inactive_sessions = []
+
+    for session_id, last_activity in session_last_activity.items():
+        if current_time - last_activity > 3600:  # 1 hour
+            inactive_sessions.append(session_id)
+
+    for session_id in inactive_sessions:
+        print(f"🕐 Cleaning up inactive session: {session_id}")
+        cleanup_session_files(session_id)
+        if session_id in session_last_activity:
+            del session_last_activity[session_id]
+
 # Cleanup function to clear ChromaDB and session files on app shutdown
 def cleanup_chromadb():
     print("🧹 Cleaning up ChromaDB and session files before shutdown...")
@@ -108,6 +129,12 @@ def upload_file():
             print(f"🆔 Created new session: {session['session_id']}")
         else:
             print(f"🆔 Using existing session: {session['session_id']}")
+
+        # Update session activity
+        update_session_activity(session['session_id'])
+
+        # Clean up inactive sessions
+        cleanup_inactive_sessions()
 
         files = request.files.getlist("file")  # 👈 NOTE: Frontend should send 'file'
         print(f"📋 Found {len(files)} files in request")
@@ -182,6 +209,10 @@ def query():
         return jsonify({"error": "No query provided"}), 400
 
     try:
+        # Update session activity if session exists
+        if 'session_id' in session:
+            update_session_activity(session['session_id'])
+
         answer = query_with_rag(user_query)
         return jsonify({"answer": answer}), 200
     except Exception as e:
@@ -235,6 +266,9 @@ def get_session_files():
             return jsonify({"files": [], "session_id": None}), 200
 
         session_id = session['session_id']
+        # Update session activity
+        update_session_activity(session_id)
+
         files = session_files.get(session_id, [])
 
         # Format file info for frontend
@@ -253,6 +287,19 @@ def get_session_files():
         }), 200
     except Exception as e:
         print("🔥 Error in /files:", str(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/heartbeat", methods=["POST"])
+def heartbeat():
+    """Keep session alive"""
+    try:
+        if 'session_id' in session:
+            update_session_activity(session['session_id'])
+            return jsonify({"status": "alive", "session_id": session['session_id']}), 200
+        else:
+            return jsonify({"status": "no_session"}), 200
+    except Exception as e:
+        print("🔥 Error in /heartbeat:", str(e))
         return jsonify({"error": str(e)}), 500
 
 @app.route("/chromadb/status", methods=["GET"])

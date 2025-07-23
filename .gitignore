@@ -1,2 +1,5 @@
 env/
 .env
+
+./Backend/utils/__pycache__/
+Backend/utils/__pycache__/ragPipeline.cpython-39.pyc
