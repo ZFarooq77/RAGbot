@@ -11,13 +11,11 @@ from langchain.schema import Document
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-CHROMA_DIR = "chroma_db"
-
 # Embeddings
 embedding_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-# Initialize ChromaDB
-db = Chroma(persist_directory=CHROMA_DIR, embedding_function=embedding_model)
+# Initialize ChromaDB (in-memory, no persistence)
+db = Chroma(embedding_function=embedding_model)
 
 # Manual call to Groq API
 def call_groq_llama(prompt):
@@ -126,9 +124,25 @@ def check_if_chromadb_empty():
     collection = db.get()
     print(f"Total documents in ChromaDB: {len(collection['ids'])}")
     if (len(collection["ids"]) == 0):
-        return 0 
+        return 0
     else:
         return 1
+
+def clear_chromadb():
+    """Clear all documents from ChromaDB"""
+    try:
+        # Get all document IDs
+        collection = db.get()
+        if collection['ids']:
+            # Delete all documents
+            db.delete(ids=collection['ids'])
+            print(f"🗑️ Cleared {len(collection['ids'])} documents from ChromaDB")
+        else:
+            print("🗑️ ChromaDB is already empty")
+        return True
+    except Exception as e:
+        print(f"❌ Error clearing ChromaDB: {str(e)}")
+        return False
 
 
 # # utils/ragPipeline.py

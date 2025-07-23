@@ -1,0 +1,4 @@
+This is a test file for session-based file management.
+It contains some sample text to test the RAG pipeline.
+Session-based storage ensures that files are only kept during the active session.
+When the session ends, all files are automatically cleaned up.
